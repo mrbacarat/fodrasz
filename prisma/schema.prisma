@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  STAFF
+  RECEPTION
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  name         String
+  passwordHash String
+  role         UserRole
+  staffProfile StaffProfile?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model StaffProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  bio         String?
+  specialties String[]
+  services    Service[] @relation("StaffServices")
+  appointments Appointment[]
+}
+
+model Customer {
+  id        String       @id @default(uuid())
+  name      String
+  email     String       @unique
+  phone     String
+  notes     String?
+  allergies String?
+  appointments Appointment[]
+  createdAt DateTime     @default(now())
+}
+
+model Service {
+  id              String         @id @default(uuid())
+  name            String
+  description     String
+  priceHuf        Int
+  durationMinutes Int
+  bufferMinutes   Int
+  category        String
+  addons          ServiceAddon[]
+  staff           StaffProfile[] @relation("StaffServices")
+}
+
+model ServiceAddon {
+  id         String   @id @default(uuid())
+  name       String
+  priceHuf   Int
+  serviceId  String
+  service    Service  @relation(fields: [serviceId], references: [id])
+}
+
+model Appointment {
+  id          String             @id @default(uuid())
+  startAt     DateTime
+  status      AppointmentStatus
+  notes       String?
+  staffId     String?
+  staff       StaffProfile?      @relation(fields: [staffId], references: [id])
+  customerId  String
+  customer    Customer           @relation(fields: [customerId], references: [id])
+  items       AppointmentItem[]
+  payment     Payment?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model AppointmentItem {
+  id            String       @id @default(uuid())
+  appointmentId String
+  appointment   Appointment  @relation(fields: [appointmentId], references: [id])
+  serviceId     String
+  service       Service      @relation(fields: [serviceId], references: [id])
+  addonIds      String[]
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  appointmentId  String        @unique
+  appointment    Appointment   @relation(fields: [appointmentId], references: [id])
+  amountHuf      Int
+  status         PaymentStatus
+  provider       String
+  createdAt      DateTime      @default(now())
+}
+
+model AvailabilityRule {
+  id          String   @id @default(uuid())
+  staffId     String?
+  dayOfWeek   Int
+  startTime   String
+  endTime     String
+  breakStart  String?
+  breakEnd    String?
+}
+
+model TimeOff {
+  id        String   @id @default(uuid())
+  staffId   String?
+  startAt   DateTime
+  endAt     DateTime
+  reason    String?
+}
+
+model Setting {
+  id        String  @id @default(uuid())
+  key       String  @unique
+  value     Json
+}
+
+model NotificationLog {
+  id          String   @id @default(uuid())
+  channel     String
+  recipient   String
+  status      String
+  payload     Json
+  createdAt   DateTime @default(now())
+}
