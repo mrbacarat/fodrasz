@@ -1,0 +1,182 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  RECEPTION
+}
+
+enum AppointmentStatus {
+  BOOKED
+  CANCELLED
+  NOSHOW
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  name         String
+  passwordHash String
+  role         Role
+  staffProfile StaffProfile?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model StaffProfile {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  title       String
+  specialty   String
+  bio         String
+  services    Service[]
+  appointments Appointment[]
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+model Customer {
+  id          String        @id @default(uuid())
+  name        String
+  email       String        @unique
+  phone       String
+  notes       String?
+  appointments Appointment[]
+  createdAt   DateTime      @default(now())
+}
+
+model Service {
+  id               String        @id @default(uuid())
+  name             String
+  description      String
+  price            Int
+  durationMinutes  Int
+  bufferMinutes    Int           @default(0)
+  category         String
+  active           Boolean       @default(true)
+  defaultStaffId   String?
+  addons           ServiceAddon[]
+  staff            StaffProfile[]
+  appointmentItems AppointmentItem[]
+}
+
+model ServiceAddon {
+  id          String   @id @default(uuid())
+  serviceId   String
+  name        String
+  price       Int
+  durationMinutes Int @default(0)
+  service     Service  @relation(fields: [serviceId], references: [id])
+}
+
+model Appointment {
+  id          String             @id @default(uuid())
+  customerId  String
+  staffId     String?
+  startAt     DateTime
+  endAt       DateTime
+  status      AppointmentStatus
+  note        String?
+  cancelToken String             @default(uuid())
+  cancelledAt DateTime?
+  customer    Customer           @relation(fields: [customerId], references: [id])
+  staff       StaffProfile?      @relation(fields: [staffId], references: [id])
+  items       AppointmentItem[]
+  payments    Payment[]
+  createdAt   DateTime           @default(now())
+}
+
+model AppointmentItem {
+  id               String   @id @default(uuid())
+  appointmentId    String
+  serviceId        String
+  addonId          String?
+  price            Int
+  durationMinutes  Int
+  appointment      Appointment @relation(fields: [appointmentId], references: [id])
+  service          Service     @relation(fields: [serviceId], references: [id])
+  addon            ServiceAddon? @relation(fields: [addonId], references: [id])
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  appointmentId String
+  amount        Int
+  status        PaymentStatus
+  provider      String
+  createdAt     DateTime      @default(now())
+  appointment   Appointment   @relation(fields: [appointmentId], references: [id])
+}
+
+model AvailabilityRule {
+  id          String   @id @default(uuid())
+  staffId     String
+  weekday     Int
+  startTime   String
+  endTime     String
+  staff       StaffProfile @relation(fields: [staffId], references: [id])
+}
+
+model TimeOff {
+  id        String   @id @default(uuid())
+  staffId   String
+  startAt   DateTime
+  endAt     DateTime
+  reason    String?
+  staff     StaffProfile @relation(fields: [staffId], references: [id])
+}
+
+model Setting {
+  id             String   @id @default(uuid())
+  brandName      String
+  logoUrl        String?
+  primaryColor   String
+  secondaryColor String
+  fontPreset     String
+  buttonStyle    String
+  radius         Int
+  heroImageUrl   String?
+  galleryImages  String[]
+  policies       String
+  reminders      String
+  createdAt      DateTime @default(now())
+}
+
+model NotificationLog {
+  id        String   @id @default(uuid())
+  channel   String
+  recipient String
+  status    String
+  payload   String
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String
+  action    String
+  entity    String
+  entityId  String
+  createdAt DateTime @default(now())
+}
+
+model WaitlistEntry {
+  id            String   @id @default(uuid())
+  serviceId     String
+  preferredDate String
+  email         String
+  createdAt     DateTime @default(now())
+}
